@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pulse — live Steam player counts &amp; where to buy cheapest</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Sora:wght@400;600;700;800&display=swap');
+
+  :root{
+    --paper:#0B0A08;
+    --paper-2:#141210;
+    --ink:#F2EDE4;
+    --ink-soft:#948A7A;
+    --rule:#2B2620;
+    --up:#8FD14F;
+    --up-bg:#1C2410;
+    --down:#FF6B4A;
+    --down-bg:#2E1610;
+    --accent:#FFB627;
+    --accent-dim:#8A6A1E;
+    --card:#181510;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px),
+      var(--paper);
+    color:var(--ink);
+    font-family: 'Sora', -apple-system, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{ font-family: 'Space Mono', ui-monospace, monospace; }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px 80px;}
+
+  header.masthead{
+    border-bottom:3px double var(--accent-dim);
+    padding:30px 0 18px;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    flex-wrap:wrap;
+    gap:12px;
+  }
+  .masthead h1{
+    font-family:'Space Mono', monospace;
+    font-size:2.1rem;
+    margin:0;
+    letter-spacing:0.02em;
+    font-weight:700;
+    text-transform:uppercase;
+  }
+  .masthead h1 span{ color:var(--accent); }
+  .search-wrap{ position:relative; }
+  .currency-toggle{ display:flex; border:1px solid var(--rule); }
+  .cur-btn{
+    background:var(--card); border:none; color:var(--ink-soft);
+    font-family:'Space Mono', monospace; font-size:0.75rem;
+    padding:9px 10px; cursor:pointer; letter-spacing:0.02em;
+    border-right:1px solid var(--rule);
+  }
+  .cur-btn:last-child{ border-right:none; }
+  .cur-btn.active{ background:var(--accent); color:#1a1204; font-weight:700; }
+  .cur-btn:hover:not(.active){ color:var(--ink); }
+  .search-box{
+    background:var(--card); border:1px solid var(--rule); color:var(--ink);
+    font-family:'Space Mono', monospace; font-size:0.78rem;
+    padding:9px 12px; width:240px; letter-spacing:0.03em;
+  }
+  .search-box:focus{ outline:none; border-color:var(--accent); }
+  .search-box::placeholder{ color:var(--ink-soft); }
+  .search-results{
+    display:none; position:absolute; top:calc(100% + 4px); right:0;
+    width:320px; max-height:360px; overflow-y:auto;
+    background:var(--card); border:1px solid var(--accent-dim);
+    z-index:50; box-shadow:0 8px 24px rgba(0,0,0,0.5);
+  }
+  .search-results.open{ display:block; }
+  .search-result-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 12px; border-bottom:1px solid var(--rule); font-size:0.85rem;
+    cursor:default;
+  }
+  .search-result-row:last-child{ border-bottom:none; }
+  .search-result-row .sr-count{ font-family:'Space Mono', monospace; color:var(--accent); font-weight:700; }
+  .search-result-row .sr-tag{
+    font-size:0.62rem; color:var(--ink-soft); text-transform:uppercase;
+    letter-spacing:0.06em; margin-left:6px;
+  }
+  .search-empty{ padding:14px; font-size:0.8rem; color:var(--ink-soft); }
+  .masthead .tag{
+    font-size:0.8rem;
+    color:var(--ink-soft);
+    max-width:300px;
+    text-align:right;
+    line-height:1.5;
+    font-family:'Space Mono', monospace;
+  }
+  .datestrip{
+    display:flex;
+    justify-content:space-between;
+    font-size:0.72rem;
+    color:var(--ink-soft);
+    padding:10px 0;
+    border-bottom:1px solid var(--rule);
+    margin-bottom:30px;
+    font-family:'Space Mono', monospace;
+    letter-spacing:0.02em;
+  }
+
+  section.lead{
+    display:grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap:2px;
+    margin-bottom:48px;
+    background:var(--rule);
+    border:1px solid var(--rule);
+  }
+  section.lead > div{ background:var(--paper); padding:22px; }
+  @media (max-width:720px){ section.lead{grid-template-columns:1fr;} }
+
+  .lead-figure{ font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.12em; font-weight:700; }
+  .big-name{ font-size:1.4rem; font-weight:800; margin:8px 0 6px; }
+  .big-delta{ font-size:1rem; font-family:'Space Mono', monospace; }
+  .lead-note{ margin-top:14px; font-size:0.88rem; line-height:1.6; color:var(--ink-soft); }
+
+  table.board{ width:100%; border-collapse:collapse; }
+  table.board th{
+    text-align:left; font-weight:700; font-size:0.68rem;
+    color:var(--accent); border-bottom:2px solid var(--rule); padding:8px;
+    text-transform:uppercase; letter-spacing:0.08em; font-family:'Space Mono', monospace;
+  }
+  table.board th.num, table.board td.num{ text-align:right; }
+  table.board td{
+    padding:13px 8px; border-bottom:1px solid var(--rule);
+    font-size:0.9rem; vertical-align:middle;
+  }
+  table.board td.num{ font-family:'Space Mono', monospace; }
+  table.board tr.row{ cursor:pointer; }
+  table.board tr.row:hover{ background:var(--card); }
+  .game-name{ font-weight:700; }
+  .game-cell{ display:flex; align-items:center; gap:10px; }
+  .game-cover{
+    width:46px; height:22px; object-fit:cover; border-radius:2px;
+    flex-shrink:0; background:var(--card);
+  }
+  .pill{
+    display:inline-block; font-size:0.76rem; padding:2px 8px; border-radius:2px;
+    font-family:'Space Mono', monospace; font-weight:700;
+    border:1px solid transparent;
+  }
+  .pill.up{ background:var(--up-bg); color:var(--up); border-color:var(--up); }
+  .pill.down{ background:var(--down-bg); color:var(--down); border-color:var(--down); }
+  .pill.pending{ background:var(--card); color:var(--ink-soft); border:1px solid var(--rule); }
+  .spark{ display:block; }
+
+  .boards{ display:grid; grid-template-columns:1fr 1fr; gap:2px; margin-bottom:34px; background:var(--rule); border:1px solid var(--rule); }
+  .boards > div{ background:var(--paper); padding:20px; }
+  @media (max-width:720px){ .boards{grid-template-columns:1fr;} }
+
+  h2.section-head{
+    font-size:0.85rem; margin:0 0 4px; font-weight:700;
+    text-transform:uppercase; letter-spacing:0.1em; color:var(--accent);
+    font-family:'Space Mono', monospace;
+  }
+  p.section-sub{ font-size:0.8rem; color:var(--ink-soft); margin:0 0 16px; }
+
+  .collecting-banner{
+    background:var(--card); border-left:3px solid var(--accent);
+    padding:14px 18px; font-size:0.85rem; color:var(--ink-soft); line-height:1.6;
+    margin-bottom:40px;
+  }
+  .collecting-banner strong{ color:var(--accent); }
+
+  tr.buy-row td{ padding:0; border-bottom:1px solid var(--rule); }
+  .buy-panel{
+    display:none;
+    padding:16px 8px 20px;
+    background:var(--card);
+    border-left:3px solid var(--accent-dim);
+  }
+  .buy-panel.open{ display:block; }
+  .buy-panel-inner{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+  .buy-btn{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:10px 16px; border-radius:2px; text-decoration:none;
+    font-size:0.85rem; font-weight:700; border:1px solid var(--rule);
+    color:var(--ink); background:var(--paper); font-family:'Space Mono', monospace;
+  }
+  .buy-btn:hover{ border-color:var(--accent); }
+  .buy-btn.primary{ background:var(--accent); color:#1a1204; border-color:var(--accent); }
+  .buy-note{ font-size:0.74rem; color:var(--ink-soft); width:100%; margin-top:8px; }
+
+  .methodology{
+    border-top:3px double var(--accent-dim); padding-top:22px;
+    font-size:0.88rem; line-height:1.7; color:var(--ink-soft);
+  }
+  .methodology h3{ color:var(--accent); font-size:0.82rem; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.08em; font-family:'Space Mono', monospace; }
+
+  .disclaimer-note{
+    margin-top:32px; font-size:0.7rem; color:var(--ink-soft);
+    border:1px dashed var(--rule); padding:12px 14px; line-height:1.6;
+    font-family:'Space Mono', monospace;
+  }
+
+  #hover-card{
+    position:fixed; z-index:100; display:none;
+    background:var(--card); border:1px solid var(--accent-dim);
+    padding:14px 16px; min-width:220px; max-width:280px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.5);
+    pointer-events:none;
+  }
+  #hover-card .hc-name{
+    font-weight:700; font-size:0.95rem; margin-bottom:10px;
+    border-bottom:1px solid var(--rule); padding-bottom:8px;
+  }
+  #hover-card .hc-row{
+    display:flex; justify-content:space-between; font-size:0.8rem;
+    padding:3px 0; color:var(--ink-soft);
+  }
+  #hover-card .hc-row span:last-child{
+    color:var(--ink); font-family:'Space Mono', monospace; font-weight:700;
+  }
+</style>
+</head>
+<body>
+<div id="hover-card">
+  <div class="hc-name" id="hc-name">—</div>
+  <div class="hc-row" id="hc-dev-row"><span>Developer</span><span id="hc-dev">—</span></div>
+  <div class="hc-row" id="hc-genre-row"><span>Genres</span><span id="hc-genre">—</span></div>
+  <div class="hc-row" id="hc-rating-row"><span>Rating</span><span id="hc-rating">—</span></div>
+  <div class="hc-row"><span>Players now</span><span id="hc-now">—</span></div>
+  <div class="hc-row"><span>24h peak</span><span id="hc-peak">—</span></div>
+  <div class="hc-row"><span>Price</span><span id="hc-price">—</span></div>
+</div>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <h1>Pulse<span>_</span></h1>
+    <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+      <div class="currency-toggle" id="currency-toggle">
+        <button class="cur-btn active" data-cur="USD">$ USD</button>
+        <button class="cur-btn" data-cur="EUR">€ EUR</button>
+        <button class="cur-btn" data-cur="GBP">£ GBP</button>
+      </div>
+      <div class="search-wrap">
+        <input type="text" id="game-search" class="search-box" placeholder="SEARCH TRACKED GAMES..." autocomplete="off">
+        <div id="search-results" class="search-results"></div>
+      </div>
+    </div>
+  </header>
+
+  <div class="datestrip">
+    <span id="clock">—</span>
+    <span id="scan-count">—</span>
+  </div>
+
+  <div id="collecting-banner" class="collecting-banner" style="display:none;">
+    <strong>Just getting started.</strong> This tracker began scanning on <span id="first-scan-date">—</span>. Trend percentages need at least two scans to mean anything, so they'll appear as data builds up over the next few hours and days.
+  </div>
+
+  <section class="lead">
+    <div>
+      <div class="lead-figure">Biggest gainer</div>
+      <div class="big-name" id="lead-name">—</div>
+      <div class="big-delta" id="lead-delta">—</div>
+      <svg id="lead-spark" class="spark" width="100%" height="90" viewBox="0 0 400 90" preserveAspectRatio="none"></svg>
+      <p class="lead-note" id="lead-note"></p>
+    </div>
+    <div>
+      <div class="lead-figure">Biggest drop</div>
+      <div class="big-name" id="drop-name">—</div>
+      <div class="big-delta" id="drop-delta">—</div>
+      <svg id="drop-spark" class="spark" width="100%" height="90" viewBox="0 0 400 90" preserveAspectRatio="none"></svg>
+      <p class="lead-note" id="drop-note"></p>
+    </div>
+  </section>
+
+  <div class="boards" id="trend-boards">
+    <div>
+      <h2 class="section-head">Trending up</h2>
+      <p class="section-sub">Largest player-count increase since last scan</p>
+      <table class="board">
+        <thead><tr><th>Game</th><th></th><th class="num">Δ</th><th class="num">%</th></tr></thead>
+        <tbody id="gainers-body"></tbody>
+      </table>
+    </div>
+    <div>
+      <h2 class="section-head">Trending down</h2>
+      <p class="section-sub">Largest player-count drop since last scan</p>
+      <table class="board">
+        <thead><tr><th>Game</th><th></th><th class="num">Δ</th><th class="num">%</th></tr></thead>
+        <tbody id="losers-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <h2 class="section-head">Tracked games</h2>
+  <p class="section-sub">Click a game to see where it's cheapest right now</p>
+  <table class="board" style="margin-bottom:56px;">
+    <thead><tr><th>Game</th><th class="num">Players now</th><th class="num">Δ</th><th class="num">Price</th><th></th></tr></thead>
+    <tbody id="full-body"></tbody>
+  </table>
+
+  <div class="boards" style="margin-bottom:56px;">
+    <div>
+      <h2 class="section-head">Top developers</h2>
+      <p class="section-sub">Combined current players across their tracked games</p>
+      <table class="board">
+        <thead><tr><th>Developer</th><th class="num">Games</th><th class="num">Players</th></tr></thead>
+        <tbody id="dev-body"></tbody>
+      </table>
+    </div>
+    <div>
+      <h2 class="section-head">Top publishers</h2>
+      <p class="section-sub">Combined current players across their tracked games</p>
+      <table class="board">
+        <thead><tr><th>Publisher</th><th class="num">Games</th><th class="num">Players</th></tr></thead>
+        <tbody id="pub-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <h2 class="section-head">Discovered — top by player count</h2>
+  <p class="section-sub" id="discovered-sub">Found while scanning Steam's full catalogue, not on our core tracked list. Use the search box above to look up any other game we have data for.</p>
+  <table class="board" style="margin-bottom:56px;">
+    <thead><tr><th>Game</th><th class="num">Players now</th><th class="num">Price</th><th class="num">Last confirmed</th></tr></thead>
+    <tbody id="discovered-body"></tbody>
+  </table>
+
+  <div class="methodology">
+    <h3>Where this data comes from</h3>
+    <p>Player counts come straight from Steam's own public API — the same underlying source other player-count trackers use, scanned every 30 minutes. We don't reproduce anyone's historical charts or scrape pricing sites; price links go to official partner programs. Our own trend history builds up from the day we started tracking — it grows a little deeper with every scan.</p>
+  </div>
+
+  <div class="disclaimer-note">
+    Live scan data. Buy buttons are placeholders — no real affiliate IDs wired up yet.
+  </div>
+
+</div>
+
+<script>
+(function(){
+  let EMBEDDED_HISTORY = {};
+
+  let EMBEDDED_PRICES = {USD:{},EUR:{},GBP:{}};
+  let EMBEDDED_DISCOVERED = {};
+  let EMBEDDED_METADATA = {};
+
+  function fmt(n){ return n.toLocaleString('en-US'); }
+
+  let currentCurrency = 'USD';
+  const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£' };
+
+  function getPrice(appid){
+    const table = EMBEDDED_PRICES[currentCurrency] || {};
+    return table[String(appid)];
+  }
+
+  function fmtPrice(amount){
+    return `${CURRENCY_SYMBOLS[currentCurrency] || ''}${amount.toFixed(2)}`;
+  }
+
+  function gameCell(g){
+    const meta = EMBEDDED_METADATA[String(g.appid)];
+    const cover = (meta && meta.header_image) || `https://cdn.akamai.steamstatic.com/steam/apps/${g.appid}/capsule_231x87.jpg`;
+    return `<div class="game-cell"><img class="game-cover" src="${cover}" loading="lazy" alt="" onerror="this.style.display='none'"><span class="game-name">${g.name}</span></div>`;
+  }
+
+  function sparkPath(series, w, h){
+    if (series.length < 2) {
+      const y = h/2;
+      return `M0,${y} L${w},${y}`;
+    }
+    const min = Math.min(...series), max = Math.max(...series);
+    const range = (max-min)||1;
+    const step = w/(series.length-1);
+    return series.map((v,i)=>{
+      const x = i*step;
+      const y = h - ((v-min)/range)*h*0.85 - h*0.075;
+      return (i===0?'M':'L')+x.toFixed(1)+','+y.toFixed(1);
+    }).join(' ');
+  }
+  function miniSpark(series, up){
+    const path = sparkPath(series, 120, 32);
+    const color = up ? '#5FBF7A' : (up===false ? '#E0685A' : '#8A97A5');
+    return `<svg width="120" height="32" viewBox="0 0 120 32" preserveAspectRatio="none"><path d="${path}" fill="none" stroke="${color}" stroke-width="1.6"/></svg>`;
+  }
+  function renderLeadSpark(id, series){
+    const svg = document.getElementById(id);
+    const path = sparkPath(series, 400, 90);
+    svg.innerHTML = `<path d="${path}" fill="none" stroke="var(--ink)" stroke-width="1.8"/>`;
+  }
+
+  function trendPill(pct, delta){
+    if (pct === null) return `<span class="pill pending">collecting</span>`;
+    const cls = pct >= 0 ? 'up' : 'down';
+    const sign = pct >= 0 ? '+' : '';
+    return `<span class="pill ${cls}">${sign}${pct.toFixed(1)}%</span>`;
+  }
+
+  function buyPanelHtml(game){
+    const q = encodeURIComponent(game.name);
+    const price = getPrice(game.appid);
+
+    if (!price) {
+      return `
+        <div class="buy-panel-inner">
+          <a class="buy-btn primary" href="https://isthereanydeal.com/search/?q=${q}" target="_blank" rel="noopener">Search on IsThereAnyDeal</a>
+          <div class="buy-note">No price data available for this game yet.</div>
+        </div>`;
+    }
+
+    const isFree = price.best_price === 0;
+    const priceLabel = isFree ? 'Free to play' : `${fmtPrice(price.best_price)} ${price.currency}`;
+    const cutBadge = price.cut > 0 ? `<span class="pill up">-${price.cut}%</span>` : '';
+    const historyNote = price.history_low !== null
+      ? `All-time low: ${fmtPrice(price.history_low)} ${price.currency}`
+      : 'No price history available yet';
+
+    return `
+      <div class="buy-panel-inner">
+        <a class="buy-btn primary" href="${price.url}" target="_blank" rel="noopener">
+          ${priceLabel} at ${price.shop} ${cutBadge}
+        </a>
+        <div class="buy-note">${historyNote} · Price via IsThereAnyDeal — placeholder link, not yet using a real affiliate ID.</div>
+      </div>`;
+  }
+
+  function buildData(history){
+    return Object.values(history).map(entry => {
+      const series = entry.series.map(p => p.count);
+      const n = series.length;
+      const latest = series[n-1];
+      let d1 = 0, pct1 = null;
+      if (n >= 2) {
+        d1 = series[n-1] - series[n-2];
+        pct1 = series[n-2] !== 0 ? (d1/series[n-2])*100 : null;
+      }
+      // 24h peak: highest count among points timestamped within the
+      // last 24 hours of the most recent scan. Falls back to the full
+      // series max if there's less than 24h of history yet.
+      const lastT = new Date(entry.series[n-1].t + ':00Z').getTime();
+      const cutoff = lastT - 24*60*60*1000;
+      const within24h = entry.series.filter(p => new Date(p.t + ':00Z').getTime() >= cutoff);
+      const peak24h = Math.max(...(within24h.length ? within24h : entry.series).map(p => p.count));
+      return { name: entry.name, appid: entry.appid, series, latest, d1, pct1, peak24h };
+    });
+  }
+
+  let data = [];
+  let totalPoints = 0;
+  let hasEnoughForTrends = false;
+
+  function render(){
+    document.getElementById('collecting-banner').style.display = hasEnoughForTrends ? 'none' : 'block';
+    document.getElementById('trend-boards').style.display = hasEnoughForTrends ? 'grid' : 'none';
+
+    const withTrend = data.filter(g => g.pct1 !== null);
+    const sorted = [...withTrend].sort((a,b)=>b.pct1-a.pct1);
+    const top = sorted[0] || data[0];
+    const bottom = sorted[sorted.length-1] || data[0];
+
+    if (hasEnoughForTrends && sorted.length > 0) {
+      document.getElementById('lead-name').textContent = top.name;
+      document.getElementById('lead-delta').innerHTML = `${trendPill(top.pct1, top.d1)} &nbsp; ${top.d1>=0?'+':''}${fmt(top.d1)} players since last scan`;
+      document.getElementById('lead-note').textContent = `${top.name} grew the most between the last two scans.`;
+      renderLeadSpark('lead-spark', top.series);
+
+      document.getElementById('drop-name').textContent = bottom.name;
+      document.getElementById('drop-delta').innerHTML = `${trendPill(bottom.pct1, bottom.d1)} &nbsp; ${fmt(bottom.d1)} players since last scan`;
+      document.getElementById('drop-note').textContent = `${bottom.name} dropped the most between the last two scans.`;
+      renderLeadSpark('drop-spark', bottom.series);
+
+      const gainers = sorted.slice(0,5);
+      const losers = [...sorted].reverse().slice(0,5);
+      document.getElementById('gainers-body').innerHTML = gainers.map(g => `
+        <tr class="row" data-appid="${g.appid}">
+          <td>${gameCell(g)}</td>
+          <td>${miniSpark(g.series, true)}</td>
+          <td class="num">+${fmt(g.d1)}</td>
+          <td class="num">${trendPill(g.pct1)}</td>
+        </tr>`).join('');
+      document.getElementById('losers-body').innerHTML = losers.map(g => `
+        <tr class="row" data-appid="${g.appid}">
+          <td>${gameCell(g)}</td>
+          <td>${miniSpark(g.series, false)}</td>
+          <td class="num">${fmt(g.d1)}</td>
+          <td class="num">${trendPill(g.pct1)}</td>
+        </tr>`).join('');
+    } else {
+      const first = data[0];
+      document.getElementById('lead-name').textContent = first ? first.name : '—';
+      document.getElementById('lead-delta').innerHTML = `<span class="pill pending">collecting data</span>`;
+      document.getElementById('lead-note').textContent = 'Trends will appear once a second scan has run.';
+      if (first) renderLeadSpark('lead-spark', first.series);
+      document.getElementById('drop-name').textContent = '—';
+      document.getElementById('drop-delta').innerHTML = '';
+      document.getElementById('drop-note').textContent = '';
+    }
+
+    const byTotal = [...data].sort((a,b)=>b.latest-a.latest);
+    const fBody = document.getElementById('full-body');
+    fBody.innerHTML = byTotal.map((g, idx) => {
+      const price = getPrice(g.appid);
+      let priceCell = '<span style="color:var(--ink-soft);">—</span>';
+      if (price) {
+        const label = price.best_price === 0 ? 'Free' : fmtPrice(price.best_price);
+        priceCell = price.cut > 0
+          ? `${label} <span class="pill up">-${price.cut}%</span>`
+          : label;
+      }
+      return `
+      <tr class="row" data-idx="${idx}" data-appid="${g.appid}">
+        <td>${gameCell(g)}</td>
+        <td class="num">${fmt(g.latest)}</td>
+        <td class="num">${g.pct1 !== null ? trendPill(g.pct1) : '<span class="pill pending">collecting</span>'}</td>
+        <td class="num">${priceCell}</td>
+        <td>${miniSpark(g.series, g.pct1 !== null ? g.d1>=0 : null)}</td>
+      </tr>
+      <tr class="buy-row"><td colspan="5"><div class="buy-panel" id="panel-${idx}">${buyPanelHtml(g)}</div></td></tr>
+    `;
+    }).join('');
+
+    fBody.querySelectorAll('tr.row').forEach(tr => {
+      tr.addEventListener('click', () => {
+        const idx = tr.getAttribute('data-idx');
+        const panel = document.getElementById('panel-'+idx);
+        const wasOpen = panel.classList.contains('open');
+        fBody.querySelectorAll('.buy-panel.open').forEach(p => p.classList.remove('open'));
+        if(!wasOpen) panel.classList.add('open');
+      });
+    });
+  }
+
+
+  function attachHoverCards(){
+    const card = document.getElementById('hover-card');
+    const byAppid = {};
+    data.forEach(g => byAppid[String(g.appid)] = g);
+
+    document.querySelectorAll('tr.row[data-appid]').forEach(tr => {
+      tr.addEventListener('mouseenter', () => {
+        const g = byAppid[tr.getAttribute('data-appid')];
+        if (!g) return;
+        document.getElementById('hc-name').textContent = g.name;
+        document.getElementById('hc-now').textContent = fmt(g.latest);
+        document.getElementById('hc-peak').textContent = fmt(g.peak24h);
+        const price = getPrice(g.appid);
+        document.getElementById('hc-price').textContent = price
+          ? (price.best_price === 0 ? 'Free' : fmtPrice(price.best_price))
+          : '—';
+
+        const meta = EMBEDDED_METADATA[String(g.appid)];
+        const devRow = document.getElementById('hc-dev-row');
+        const genreRow = document.getElementById('hc-genre-row');
+        const ratingRow = document.getElementById('hc-rating-row');
+        if (meta) {
+          devRow.style.display = 'flex';
+          document.getElementById('hc-dev').textContent = (meta.developers && meta.developers[0]) || '—';
+          genreRow.style.display = 'flex';
+          document.getElementById('hc-genre').textContent = (meta.genres || []).slice(0,2).join(', ') || '—';
+          ratingRow.style.display = 'flex';
+          document.getElementById('hc-rating').textContent = meta.review_pct !== null
+            ? `${meta.review_pct}% (${fmt(meta.review_positive + meta.review_negative)})`
+            : '—';
+        } else {
+          devRow.style.display = 'none';
+          genreRow.style.display = 'none';
+          ratingRow.style.display = 'none';
+        }
+        card.style.display = 'block';
+      });
+      tr.addEventListener('mousemove', (e) => {
+        const pad = 16;
+        let x = e.clientX + pad, y = e.clientY + pad;
+        if (x + 280 > window.innerWidth) x = e.clientX - 280 - pad;
+        if (y + 140 > window.innerHeight) y = e.clientY - 140 - pad;
+        card.style.left = x + 'px';
+        card.style.top = y + 'px';
+      });
+      tr.addEventListener('mouseleave', () => { card.style.display = 'none'; });
+    });
+  }
+
+  function computeTopEntities(field){
+    // field is 'developers' or 'publishers'. Sums each tracked game's
+    // current player count into every entity credited on that game
+    // (a game with 2 publishers adds its player count to both).
+    const totals = {};
+    data.forEach(g => {
+      const meta = EMBEDDED_METADATA[String(g.appid)];
+      if (!meta || !meta[field]) return;
+      meta[field].forEach(name => {
+        if (!totals[name]) totals[name] = { name, players: 0, games: 0 };
+        totals[name].players += g.latest;
+        totals[name].games += 1;
+      });
+    });
+    return Object.values(totals).sort((a,b) => b.players - a.players).slice(0, 10);
+  }
+
+  function renderTopEntities(){
+    const devs = computeTopEntities('developers');
+    const pubs = computeTopEntities('publishers');
+
+    document.getElementById('dev-body').innerHTML = devs.map(d => `
+      <tr class="row">
+        <td><span class="game-name">${d.name}</span></td>
+        <td class="num">${d.games}</td>
+        <td class="num">${fmt(d.players)}</td>
+      </tr>`).join('');
+
+    document.getElementById('pub-body').innerHTML = pubs.map(p => `
+      <tr class="row">
+        <td><span class="game-name">${p.name}</span></td>
+        <td class="num">${p.games}</td>
+        <td class="num">${fmt(p.players)}</td>
+      </tr>`).join('');
+  }
+
+  function renderDiscovered(){
+    const entries = Object.entries(EMBEDDED_DISCOVERED)
+      .map(([appid, g]) => ({ appid, ...g }))
+      .sort((a,b) => b.count - a.count)
+      .slice(0, 30); // show the top 30 by player count; the rest is still in the data file
+
+    const scannedNote = document.getElementById('discovered-sub');
+    if (!entries.length) {
+      scannedNote.textContent = `Catalogue scan is running in the background — nothing to show yet.`;
+    }
+
+    document.getElementById('discovered-body').innerHTML = entries.map(g => {
+      const price = getPrice(g.appid);
+      let priceCell = '<span style="color:var(--ink-soft);">—</span>';
+      if (price) {
+        const label = price.best_price === 0 ? 'Free' : fmtPrice(price.best_price);
+        priceCell = price.cut > 0 ? `${label} <span class="pill up">-${price.cut}%</span>` : label;
+      }
+      return `
+      <tr class="row">
+        <td><span class="game-name">${g.name}</span></td>
+        <td class="num">${fmt(g.count)}</td>
+        <td class="num">${priceCell}</td>
+        <td class="num" style="color:var(--ink-soft);">${g.last_seen.replace('T',' ')} UTC</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function setupSearch(){
+    const input = document.getElementById('game-search');
+    const resultsBox = document.getElementById('search-results');
+
+    // One combined, searchable list: core tracked games (full stats) +
+    // every discovered game (name + count only). This covers everything
+    // we have any data for, not just the top-30 shown in the Discovered table.
+    const searchable = [
+      ...data.map(g => ({ name: g.name, count: g.latest, isCore: true })),
+      ...Object.values(EMBEDDED_DISCOVERED).map(g => ({ name: g.name, count: g.count, isCore: false })),
+    ];
+
+    function renderResults(query){
+      const q = query.trim().toLowerCase();
+      if (!q){ resultsBox.classList.remove('open'); resultsBox.innerHTML=''; return; }
+      const matches = searchable
+        .filter(g => g.name.toLowerCase().includes(q))
+        .sort((a,b) => b.count - a.count)
+        .slice(0, 20);
+      if (!matches.length){
+        resultsBox.innerHTML = '<div class="search-empty">No games found in our data.</div>';
+      } else {
+        resultsBox.innerHTML = matches.map(g => `
+          <div class="search-result-row">
+            <span>${g.name}${g.isCore ? '' : '<span class="sr-tag">discovered</span>'}</span>
+            <span class="sr-count">${fmt(g.count)}</span>
+          </div>`).join('');
+      }
+      resultsBox.classList.add('open');
+    }
+
+    input.addEventListener('input', () => renderResults(input.value));
+    input.addEventListener('focus', () => { if (input.value) renderResults(input.value); });
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.search-wrap')) resultsBox.classList.remove('open');
+    });
+  }
+
+  function setupCurrencyToggle(){
+    document.querySelectorAll('.cur-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentCurrency = btn.getAttribute('data-cur');
+        document.querySelectorAll('.cur-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        render();
+        renderDiscovered();
+        attachHoverCards();
+      });
+    });
+  }
+
+  const DATA_BASE = 'https://raw.githubusercontent.com/Signal-Pointer/pulse-data/main';
+
+  function fetchJSON(url){
+    return fetch(url, {cache:'no-store'}).then(r => {
+      if(!r.ok) throw new Error('HTTP '+r.status+' for '+url);
+      return r.json();
+    });
+  }
+
+  async function init(){
+    try {
+      const [history, prices, discovered, metadata] = await Promise.all([
+        fetchJSON(DATA_BASE + '/history.json').catch(e => { console.warn('history.json failed', e); return {}; }),
+        fetchJSON(DATA_BASE + '/prices.json').catch(e => { console.warn('prices.json failed', e); return {USD:{},EUR:{},GBP:{}}; }),
+        fetchJSON(DATA_BASE + '/discovered_games.json').catch(e => { console.warn('discovered_games.json failed', e); return {}; }),
+        fetchJSON(DATA_BASE + '/metadata.json').catch(e => { console.warn('metadata.json failed', e); return {}; }),
+      ]);
+      EMBEDDED_HISTORY = history;
+      EMBEDDED_PRICES = prices;
+      EMBEDDED_DISCOVERED = discovered;
+      EMBEDDED_METADATA = metadata;
+    } catch (e) {
+      console.error('Live data load failed entirely, showing empty state', e);
+    }
+
+    data = buildData(EMBEDDED_HISTORY);
+    totalPoints = data.length ? Math.max(...data.map(g => g.series.length)) : 0;
+    hasEnoughForTrends = totalPoints >= 2;
+
+    render();
+    attachHoverCards();
+    renderTopEntities();
+    renderDiscovered();
+    setupSearch();
+    setupCurrencyToggle();
+
+    const firstTimestamp = data.reduce((min, g) => {
+      const t = g.series[0] ? g.series[0].t : null;
+      return (t && (!min || t < min)) ? t : min;
+    }, null);
+    if (firstTimestamp) {
+      document.getElementById('first-scan-date').textContent = firstTimestamp.replace('T', ' ') + ' UTC';
+    }
+    document.getElementById('scan-count').textContent = data.length
+      ? `${totalPoints} scan${totalPoints===1?'':'s'} recorded · ${data.length} games tracked`
+      : 'Could not load live data — check back shortly';
+  }
+  init();
+
+  function tick(){
+    const now = new Date();
+    document.getElementById('clock').textContent = now.toLocaleString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit'});
+  }
+  tick();
+  setInterval(tick, 30000);
+})();
+</script>
+</body>
+</html>
